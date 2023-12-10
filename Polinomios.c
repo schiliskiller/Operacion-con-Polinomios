@@ -27,12 +27,16 @@ typedef struct {
     int tam;     // Tamanio del arreglo f
 } Entrada;
 
+/* --------------------- Opciones -------------------------- */
 /* void op1(Polinomio *); */
 
-void ingresarEnt(Entrada *);
-void entapol(Entrada, Polinomio *); // Pasa los datos de la variable tipo Entrada
-                // a otra de tipo Polinomio
-void printArr(Polinomio);
+/* ------------- Comandos para el programa ------------------ */
+void ingresarEnt(Entrada *);        /* El programa le pasa un prompt al usuario
+                                     * para ingresar los datos a una variable
+                                     * tipo Entrada. */
+void entapol(Entrada, Polinomio *); /* Pasa los datos de la variable tipo Entrada
+                                     * a otra de tipo Polinomio */
+void printArr(Polinomio);           /* Imprime el polinomio a la pantalla */
 
 int
 main(void) {
