@@ -118,6 +118,11 @@ main(void) {
 
     puts("\nGracias por usar el programa!");
 
+    liberarReg();
+
+    liberarPol(&p);
+    liberarPol(&q);
+
     return 0;
 }
 
@@ -270,10 +275,12 @@ arrpol(Polinomio *p, float *arr, int size) {
 
     for (int i = 0; i < size; i++)
         if (!p->terms[i][0]) {
-            free(p->terms[i]);
+            p->terms[i][1] = 0;
             ordenar(p);
-            p->tam--;
+            cmntrm(p);
+            size--;
         }
+    ordenar(p);
     
     return *p;
 }
@@ -288,7 +295,8 @@ agregarReg(Polinomio *p) {
 
 void
 liberarReg(void) {
-
+    for (int i = 0; i < num_ejer; i++)
+        free(ejercicios[i]);
 }
 
 void
@@ -323,10 +331,13 @@ capt(Polinomio *p, Polinomio *q) {
         printf("Hay polinomios registrados.\n"
                "Desea proceder a crear otros polinomios (s/n)? ");
 
+        while (getchar() != '\n');
         if (getchar() == 'n') return;
 
         liberarPol(p);
         liberarPol(q);
+
+        pol_creado = FALSE;
     }
 
     RESERVAR_ENT(f);
@@ -594,7 +605,6 @@ polprd(Polinomio p, Polinomio q) {
     return polprd(p, q);
 }
 
-// INCOMPLETO
 // Se uso el metodo de division de Horner
 Polinomio
 *poldiv(Polinomio p, Polinomio q) {
@@ -630,7 +640,7 @@ Polinomio
         quo[it - 1] = sum;
     }
 
-    for (; it < p.terms[0][1] + 1; it++) {
+    for (; it <= p.terms[0][1] + 1; it++) {
         float sum = pval[it - 1];
 
         for (int i = 0; i < mat.m; i++)
