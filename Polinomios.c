@@ -271,6 +271,7 @@ arrpol(Polinomio *p, float *arr, int size) {
     for (int i = 0; i < size; i++)
         if (!p->terms[i][0]) {
             free(p->terms[i]);
+            ordenar(p);
             p->tam--;
         }
     
