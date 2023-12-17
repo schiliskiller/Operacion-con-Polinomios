@@ -65,9 +65,11 @@ void entapol(Entrada, Polinomio *); /* Pasa los datos de la variable tipo Entrad
                                      * a otra de tipo Polinomio */
 void imprPol(Polinomio);            /* Imprime el polinomio a la pantalla */
 void copiarPol(Polinomio *, Polinomio); /* Copia la informacion de un polinomio a otro */
-float *polesp(Polinomio p);
+void polarr(float **, Polinomio );
+Polinomio arrpol(Polinomio *, float *, int);
 void agregarReg(Polinomio *);
 void liberarReg(void);
+void liberarPol(Polinomio *);
 
 /* --------------- Operaciones con polinomios ----------------- */
 void       cmntrm(Polinomio *);               // Suma terminos comunes
@@ -93,14 +95,14 @@ main(void) {
         suma,
         rest,
         prod,
-        /* divi, */
+        divi,
         /* impr */
     };
 
     Polinomio p, q;
     int op;
 
-    do {	
+    do {
         system("cls||clear");
         menu(p, q);
         scanf("%d",&op);
@@ -136,7 +138,7 @@ menu(Polinomio p, Polinomio q) {
         printf("Polinomios:\n"
                "P(x) = ");
         imprPol(p);
-        printf("G(x) = ");
+        printf("Q(x) = ");
         imprPol(q);
     }
     puts("--------------------------------");
@@ -145,7 +147,7 @@ menu(Polinomio p, Polinomio q) {
     puts("[2] Suma de polinomios");
     puts("[3] Resta de polinomios");
     puts("[4] Multiplicacion de polinomios");
-    puts("[5] Dividicion de polinomios");
+    puts("[5] Division de polinomios");
     puts("[6] Imprimir ejercicio");
     puts("[0] Salir");
     printf("\n> ");
@@ -207,13 +209,13 @@ imprPol(Polinomio f) {
                 printf("%s%g", f.terms[i][0] < 0 ? " - " : " + ",
                                fabs(f.terms[i][0]));
         } else if (fabs(f.terms[i][0]) == 1) { // Si el coeficiente es 1, no imprimir el coeficiente
-            if (fabs(f.terms[i][1]) == 1)
+            if (f.terms[i][1] == 1)
                 printf("%sx", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "));
             else
                 printf("%sx^%g", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "), f.terms[i][1]);
         } else if (!f.terms[i][0]) {     // Si el coeficiente es 0, no imprimir con exponente; unicamente para restas
         } else {                         // De lo contrario, imprimir tanto el coeficiente como el exponente
-            if (fabs(f.terms[i][1]) == 1)
+            if (f.terms[i][1] == 1)
                 printf("%s%gx", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "),
                                 fabs(f.terms[i][0]));
             else
@@ -229,7 +231,8 @@ void
 copiarPol(Polinomio *c, Polinomio p) {
     static int i = 0;
     
-    c->terms[i] = malloc(2 * sizeof(**c->terms));
+    /* c->terms[i] = malloc(2 * sizeof(**c->terms)); */
+    RESERVAR_TRM(c->terms[i]);
     memcpy(c->terms[i], p.terms[i], 2 * sizeof(**p.terms));
 
     if (++i == p.tam) {
@@ -240,22 +243,38 @@ copiarPol(Polinomio *c, Polinomio p) {
     copiarPol(c, p);
 }
 
-float
-*polesp(Polinomio p) {
-    float *dat = malloc(p.terms[0][1] + 1 * sizeof(*dat));
+void
+polarr(float **arr, Polinomio p) {
+    int j = 0;
+    *arr = calloc(p.terms[0][1] + 1, sizeof(*arr));
 
-    for (int i = 0; i < p.terms[i][1]; i--)
-        for (int j = p.terms[i][1]; j >= -1; j--) {
-            if (p.terms[i][1] == j) {
-                *(dat + i) = p.terms[i][0];
-                break;
-            }
-
-            if (j < 0)
-                *(dat + i) = 0;
+    for (int i = p.terms[0][1]; i >= 0; i--)
+        if (j < p.tam && p.terms[j][1] == i) {
+            *(*arr + (int) (p.terms[0][1] - i)) = p.terms[j][0];
+            i = p.terms[0][1];
+            j++;
+            continue;
         }
+}
 
-    return dat;
+Polinomio
+arrpol(Polinomio *p, float *arr, int size) {
+    int exp = size - 1;
+    for (int i = 0; i < size; i++) {
+        RESERVAR_TRM(p->terms[i]);
+
+        p->terms[i][0] = arr[i];
+        p->terms[i][1] = exp--;
+    }
+    ordenar(p);
+
+    for (int i = 0; i < size; i++)
+        if (!p->terms[i][0]) {
+            free(p->terms[i]);
+            p->tam--;
+        }
+    
+    return *p;
 }
 
 void
@@ -269,6 +288,13 @@ agregarReg(Polinomio *p) {
 void
 liberarReg(void) {
 
+}
+
+void
+liberarPol(Polinomio *p) {
+    for (int i = 0; i < p->tam; i++)
+        free(p->terms[i]);
+    free(p->terms);
 }
 
 /* ----------------------- Funciones de acomodo ------------------------ */
@@ -292,13 +318,26 @@ capt(Polinomio *p, Polinomio *q) {
     Entrada f = {.tam = 0},
             g = {.tam = 0};
 
+    if (pol_creado) {
+        printf("Hay polinomios registrados.\n"
+               "Desea proceder a crear otros polinomios (s/n)? ");
+
+        if (getchar() == 'n') return;
+
+        liberarPol(p);
+        liberarPol(q);
+    }
+
     RESERVAR_ENT(f);
     RESERVAR_ENT(g);
 
     printf("Ingrese los siguientes polinomios P(x) (0 para terminar): ");
     ingresarEnt(&f);
+    if (!f.tam) return;
+
     printf("Ingrese los siguientes polinomios Q(x) (0 para terminar): ");
     ingresarEnt(&g);
+    if (!g.tam) return;
 
     p->tam = f.tam / 2;
     q->tam = g.tam / 2;
@@ -343,6 +382,14 @@ void
 suma(Polinomio *p, Polinomio *q) {
     Polinomio *suma = malloc(sizeof(*suma));
 
+    if (!pol_creado) {
+        printf("Polinomios no creados");
+        free(suma);
+        return;
+    }
+
+    if (num_ejer == 10) return;
+
     *suma = polsum(*p, *q);
 
     printf("\n(P + Q)(x) = ");
@@ -355,6 +402,15 @@ void
 rest(Polinomio *p, Polinomio *q) {
     Polinomio *resta = malloc(sizeof(*resta));
     int op;
+
+    if (!pol_creado) {
+        printf("Polinomios no creados");
+        free(resta);
+        return;
+    }
+
+    if (num_ejer == 10) return;
+
     printf("\nElija el orden:\n"
            "[1] P - Q\n"
            "[2] Q - P\n"
@@ -380,7 +436,15 @@ rest(Polinomio *p, Polinomio *q) {
 
 void
 prod(Polinomio *p, Polinomio *q) {
-    Polinomio *prdct = malloc(sizeof(*prod));
+    Polinomio *prdct = malloc(sizeof(*prdct));
+
+    if (!pol_creado) {
+        printf("Polinomios no creados");
+        free(prdct);
+        return;
+    }
+
+    if (num_ejer == 10) return;
 
     *prdct = polprd(*p, *q);
 
@@ -388,6 +452,36 @@ prod(Polinomio *p, Polinomio *q) {
     imprPol(*prdct);
 
     agregarReg(prdct);
+}
+
+void
+divi(Polinomio *p, Polinomio *q) {
+    Polinomio *div = malloc(2 * sizeof(*div));
+
+    if (!pol_creado) {
+        printf("Polinomios no creados");
+        free(div);
+        return;
+    }
+
+    if (p->tam < q->tam || p->terms[p->tam - 1][1] < 0) {
+        printf("Division no existe\n");
+        return;
+    }
+
+    if (num_ejer == 10) return;
+
+    div = poldiv(*p, *q);
+
+    printf("\nCociente: ");
+    printf("\nC(x) = ");
+    imprPol(div[1]);
+
+    printf("\nResiduo: ");
+    printf("\nR(x) = ");
+    imprPol(div[2]);
+
+    agregarReg(div);
 }
 
 /* ------------------ Op. polinomios ----------------- */
@@ -413,7 +507,7 @@ negpol(Polinomio p) {
     copiarPol(&n, p);
  
     for (int i = 0; i < p.tam; i++)
-        n.terms[i][0] = 0 - p.terms[i][0];
+        n.terms[i][0] = -p.terms[i][0];
 
     return n;
 }
@@ -446,15 +540,15 @@ polsum(Polinomio p, Polinomio q) {
             r.terms = realloc(r.terms, ++r.tam * sizeof(*r.terms));
 
             RESERVAR_TRM(r.terms[r.tam - 1]);
-            /* r.terms[r.tam - 1] = malloc(2 * sizeof(**r.terms)); */
             memcpy(r.terms[r.tam - 1], men.terms[i], 2 * sizeof(*r.terms[0]));
             break;
         }
 
-        if (men.terms[i][1] == max.terms[d][1]) {
-            r.terms[i][0] += men.terms[i][0];
+        if (men.terms[i][1] == r.terms[d][1]) {
+            r.terms[d][0] += men.terms[i][0];
             break;
-        }    }
+        }
+    }
 
     if (++i == max.tam) {
         i = 0;
@@ -483,7 +577,6 @@ polprd(Polinomio p, Polinomio q) {
 
     for (int d = 0; d < q.tam; d++) {
         RESERVAR_TRM(r.terms[j]);
-        /* r.terms[j] = malloc(2 * sizeof(**r.terms)); */
 
         r.terms[j][0] = p.terms[i][0] * q.terms[d][0];
         r.terms[j++][1] = p.terms[i][1] + q.terms[d][1];
@@ -493,53 +586,66 @@ polprd(Polinomio p, Polinomio q) {
         i = j = 0;
         ordenar(&r);
         cmntrm(&r);
+        cmntrm(&r);
         return r;
     }
 
     return polprd(p, q);
 }
 
+// INCOMPLETO
 // Se uso el metodo de division de Horner
 Polinomio
 *poldiv(Polinomio p, Polinomio q) {
-    Matriz     m;
+    Matriz     mat = {NULL};
     Polinomio *r    = malloc(2 * sizeof(*r));
     int        it = 1;
-    float     *pval = polesp(p),
-              *qval = polesp(q),
-              *res  = calloc(p.tam, sizeof(*res));
+    float     *pval = NULL, *qval = NULL,
+              *quo  = calloc(p.terms[0][1] - q.terms[0][1] + 1, sizeof(*quo)),
+              *res  = calloc(q.terms[0][1], sizeof(*res));
 
-    if (p.tam < q.tam) printf("Division no existe\n");
+    polarr(&pval, p);
+    polarr(&qval, q);
 
-    r[1].tam = p.tam - q.tam;
-    r[2].tam = q.tam;
+    r[1].tam = p.terms[0][1] - q.terms[0][1] + 1; // Tamanio del cociente
+    r[2].tam = q.terms[0][1];                     // Tamanio del residuo
 
-    RESERVAR_POL(r[1]); // Polinomio del cociente
-    RESERVAR_POL(r[2]); // Polinomio del residuo
+    RESERVAR_POL(r[1]);                           // Polinomio del cociente
+    RESERVAR_POL(r[2]);                           // Polinomio del residuo
 
-    crearMatriz(&m, q.terms[0][1] - 1, p.terms[0][1]);
+    crearMatriz(&mat, q.terms[0][1], p.terms[0][1] + 1);
 
-    *res = *pval / *qval;
+    for (; it <= p.terms[0][1] - q.terms[0][1] + 1; it++) {
+        float sum = pval[it - 1];
 
-    for (int i = 0; i < q.terms[0][1] - 1; i++) {
-        for (int j = 0; j < p.terms[0][1]; j++)
-            m.matriz[i][j + it] =  res[i] * qval[j];
+        for (int i = 0; i < mat.m; i++)
+            sum += mat.matriz[i][it - 1];
 
-        if (it == p.terms[0][1]) break;
-        it++;
+        sum /= *qval;
+
+        for (int i = 0; i < q.terms[0][1]; i++)
+            mat.matriz[it - 1][i + it] = sum * (-qval[i + 1]);
+
+        quo[it - 1] = sum;
     }
 
-    for (int j = 1; j < p.terms[0][1]; j++)
-        for (int i = 0; i < q.terms[0][1] - 1; i++)
-            if (!i)
-                res[j] += pval[i] + m.matriz[i][j];
-            else
-                res[j] += m.matriz[i][j];
+    for (; it < p.terms[0][1] + 1; it++) {
+        float sum = pval[it - 1];
 
-    /* for (int i = 0; i < ) */
+        for (int i = 0; i < mat.m; i++)
+            sum += mat.matriz[i][it - 1];
+
+        res[it - (r[1].tam + 1)] = sum;
+    }
+
+    r[1] = arrpol(&r[1], quo, r[1].tam);   
+    r[2] = arrpol(&r[2], res, r[2].tam);   
 
     free(pval);
     free(qval);
+
+    /* free(quo); */
+    /* free(res); */
 
     return r;
 }
