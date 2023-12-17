@@ -4,6 +4,7 @@
 #include <math.h>
 
 typedef enum {FALSE, TRUE} Bool; // Tipo booleano
+typedef enum { SUMA = 1, RESTA_A, RESTA_B, MULT, DIV } TipoEjer;
 
 // Reserva los datos para una variable con tipo-estructura Entrada
 #define RESERVAR_ENT(ent) if (!((ent).datos = calloc(1, sizeof(*(ent).datos)))) {      \
@@ -64,10 +65,12 @@ void ingresarEnt(Entrada *);        /* El programa le pasa un prompt al usuario
 void entapol(Entrada, Polinomio *); /* Pasa los datos de la variable tipo Entrada
                                      * a otra de tipo Polinomio */
 void imprPol(Polinomio);            /* Imprime el polinomio a la pantalla */
+void fimprPol(FILE *, Polinomio);            /* Imprime el polinomio a la pantalla */
 void copiarPol(Polinomio *, Polinomio); /* Copia la informacion de un polinomio a otro */
 void polarr(float **, Polinomio );
 Polinomio arrpol(Polinomio *, float *, int);
-void agregarReg(Polinomio *);
+void agregarReg(Polinomio *, TipoEjer);
+Bool imprimirReg(FILE *arch_reg, Polinomio p, Polinomio q);
 void liberarReg(void);
 void liberarPol(Polinomio *);
 
@@ -86,6 +89,7 @@ void ordenar(Polinomio *p);
 int        num_ejer = 0;
 Bool       pol_creado = FALSE;
 Polinomio *ejercicios[10];
+int tipo_ejer[10];
 
 /* --------------------- Programa principal ----------------------- */
 int
@@ -96,7 +100,7 @@ main(void) {
         rest,
         prod,
         divi,
-        /* impr */
+        impr
     };
 
     Polinomio p, q;
@@ -140,8 +144,8 @@ menu(Polinomio p, Polinomio q) {
     if (!pol_creado) {
         printf("Sin polinomios:\n\n\n");
     } else {
-        printf("Polinomios:\n"
-               "P(x) = ");
+        printf("Polinomios: [Ejercicios hechos: %d]\n", num_ejer);
+        printf("P(x) = ");
         imprPol(p);
         printf("Q(x) = ");
         imprPol(q);
@@ -231,6 +235,31 @@ imprPol(Polinomio f) {
     putchar('\n');
 }
 
+void
+fimprPol(FILE *arch, Polinomio f) {
+    for (int i = 0; i < f.tam; i++) {
+        if (!f.terms[i][1]) {            // Si el exponente es 0, imprimir solamente el coeficiente
+            if (f.terms[i][0])
+                fprintf(arch, "%s%g", f.terms[i][0] < 0 ? " - " : " + ",
+                               fabs(f.terms[i][0]));
+        } else if (fabs(f.terms[i][0]) == 1) { // Si el coeficiente es 1, no imprimir el coeficiente
+            if (f.terms[i][1] == 1)
+                fprintf(arch, "%sx", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "));
+            else
+                fprintf(arch, "%sx^%g", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "), f.terms[i][1]);
+        } else if (!f.terms[i][0]) {     // Si el coeficiente es 0, no imprimir con exponente; unicamente para restas
+        } else {                         // De lo contrario, imprimir tanto el coeficiente como el exponente
+            if (f.terms[i][1] == 1)
+                fprintf(arch, "%s%gx", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "),
+                                      fabs(f.terms[i][0]));
+            else
+                fprintf(arch, "%s%gx^%g", f.terms[i][0] < 0 ? (!i ? "-" : " - ") : (!i ? "" : " + "),
+                                   fabs(f.terms[i][0]), f.terms[i][1]);
+        }
+    }
+    fputc('\n', arch);
+}
+
 /* Recursiva */
 void
 copiarPol(Polinomio *c, Polinomio p) {
@@ -286,11 +315,60 @@ arrpol(Polinomio *p, float *arr, int size) {
 }
 
 void
-agregarReg(Polinomio *p) {
-    if (num_ejer < 10)
-        ejercicios[num_ejer++] = p;
-    else
+agregarReg(Polinomio *p, TipoEjer tipo) {
+    if (num_ejer < 10) {
+        ejercicios[num_ejer] = p;
+        tipo_ejer[num_ejer++] = tipo;
+    } else
         fprintf(stderr, "Registro lleno\n");
+}
+
+Bool
+imprimirReg(FILE *arch_reg, Polinomio p, Polinomio q) {
+    if (ftell(arch_reg) == EOF) {
+        fprintf(stderr, "ERROR: archivo no pudo abrirse\n");
+        return FALSE;
+    }
+    fputs("Experiencia Educativa: Programacion Estructurada\n", arch_reg);
+    fputs("Docente:               Ceron Alvarez Carlos Arturo\n\n", arch_reg);
+    fprintf(arch_reg, "Favor de resolver lo siguiente:\n\n");
+
+    fprintf(arch_reg, "P(x) = ");
+    fimprPol(arch_reg, p);
+    fprintf(arch_reg, "Q(x) = ");
+    fimprPol(arch_reg, q);
+    fputs("\n\n", arch_reg);
+
+    for (int i = 0; i < num_ejer; i++) {
+        fprintf(arch_reg, "%d ", i + 1);
+        switch (tipo_ejer[i]) {
+            case SUMA:
+                fprintf(arch_reg, "(P + Q)(x) = ");
+                break;
+            case RESTA_A:
+                fprintf(arch_reg, "(P - Q)(x) = ");
+                break;
+            case RESTA_B:
+                fprintf(arch_reg, "(Q - P)(x) = ");
+                break;
+            case MULT:
+                fprintf(arch_reg, "(P * Q)(x) = ");
+                break;
+            case DIV:
+                fprintf(arch_reg, "C(x) = ");
+                fimprPol(arch_reg, ejercicios[i][0]);
+                fprintf(arch_reg, "  R(x) = ");
+                fimprPol(arch_reg, ejercicios[i][1]);
+                fputc('\n', arch_reg);
+                break;
+        }
+        if (tipo_ejer[i] != DIV) {
+            fimprPol(arch_reg, *ejercicios[i]);
+            fputc('\n', arch_reg);
+        }
+    }
+
+    return TRUE;
 }
 
 void
@@ -407,7 +485,7 @@ suma(Polinomio *p, Polinomio *q) {
     printf("\n(P + Q)(x) = ");
     imprPol(*suma);
 
-    agregarReg(suma);
+    agregarReg(suma, SUMA);
 }
 
 void
@@ -435,15 +513,15 @@ rest(Polinomio *p, Polinomio *q) {
             printf("\n(P - Q)(x) = ");
             *resta = polsub(*p, *q);
             imprPol(*resta);
+            agregarReg(resta, RESTA_A);
             break;
         case 2:
             printf("\n(Q - P)(x) = ");
             *resta = polsub(*q, *p);
             imprPol(*resta);
+            agregarReg(resta, RESTA_B);
             break;
     }
-
-    agregarReg(resta);
 }
 
 void
@@ -463,7 +541,7 @@ prod(Polinomio *p, Polinomio *q) {
     printf("\n(P * Q)(x) = ");
     imprPol(*prdct);
 
-    agregarReg(prdct);
+    agregarReg(prdct, MULT);
 }
 
 void
@@ -487,13 +565,36 @@ divi(Polinomio *p, Polinomio *q) {
 
     printf("\nCociente: ");
     printf("\nC(x) = ");
-    imprPol(div[1]);
+    imprPol(div[0]);
 
     printf("\nResiduo: ");
     printf("\nR(x) = ");
-    imprPol(div[2]);
+    imprPol(div[1]);
 
-    agregarReg(div);
+    agregarReg(div, DIV);
+}
+
+void
+impr(Polinomio *p, Polinomio *q) {
+    FILE *registro;   
+
+    if (!num_ejer) {
+        printf("Ejercicios inexistentes.\n"
+               "Haga operaciones de polinomios para registrar los ejercicios.\n");
+        return;
+    }
+
+    if (!(registro = fopen("Ejercicios.txt", "w"))) {
+        fprintf(stderr, "ERROR: archivo no se pudo abrir\n");
+        return;
+    }
+
+    if (imprimirReg(registro, *p, *q))
+        printf("Impresion exitosa.\n");
+    else
+        printf("ERROR: impresion no exitosa\n");
+
+    fclose(registro);
 }
 
 /* ------------------ Op. polinomios ----------------- */
@@ -618,11 +719,11 @@ Polinomio
     polarr(&pval, p);
     polarr(&qval, q);
 
-    r[1].tam = p.terms[0][1] - q.terms[0][1] + 1; // Tamanio del cociente
-    r[2].tam = q.terms[0][1];                     // Tamanio del residuo
+    r[0].tam = p.terms[0][1] - q.terms[0][1] + 1; // Tamanio del cociente
+    r[1].tam = q.terms[0][1];                     // Tamanio del residuo
 
-    RESERVAR_POL(r[1]);                           // Polinomio del cociente
-    RESERVAR_POL(r[2]);                           // Polinomio del residuo
+    RESERVAR_POL(r[0]);                           // Polinomio del cociente
+    RESERVAR_POL(r[1]);                           // Polinomio del residuo
 
     crearMatriz(&mat, q.terms[0][1], p.terms[0][1] + 1);
 
@@ -646,14 +747,16 @@ Polinomio
         for (int i = 0; i < mat.m; i++)
             sum += mat.matriz[i][it - 1];
 
-        res[it - (r[1].tam + 1)] = sum;
+        res[it - (r[0].tam + 1)] = sum;
     }
 
-    r[1] = arrpol(&r[1], quo, r[1].tam);   
-    r[2] = arrpol(&r[2], res, r[2].tam);   
+    r[0] = arrpol(&r[0], quo, r[0].tam);   
+    r[1] = arrpol(&r[1], res, r[1].tam);   
 
     free(pval);
     free(qval);
+
+    liberarMatriz(&mat);
 
     /* free(quo); */
     /* free(res); */
